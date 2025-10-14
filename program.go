@@ -134,7 +134,7 @@ func (p *program) pollAdminLogOnce(ctx context.Context, channelID int64) error {
 
 	channel, err := util.FindChannelByID(ctx, p.botClient, channelID)
 	if err != nil {
-		return fmt.Errorf("adminlog", err)
+		return fmt.Errorf("find channel: %w", err)
 	}
 
 	InputChannel := &tg.InputChannel{ChannelID: channel.ID, AccessHash: channel.AccessHash}
@@ -168,7 +168,7 @@ func (p *program) pollAdminLogOnce(ctx context.Context, channelID int64) error {
 		}
 
 		rows = append(rows, AdminlogEvent{
-			ChannelID:   channelID,
+			ChannelID:   channel.ID,
 			EventID:     event.ID,
 			EventTsUTC:  ts,
 			ActorUserID: actor,
