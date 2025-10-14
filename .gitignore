@@ -1,0 +1,58 @@
+# Go build artifacts
+/bin/
+/build/
+/dist/
+/out/
+/*.exe
+/*.dll
+/*.so
+/*.dylib
+*.test
+*.out
+*.a
+*.o
+
+# Go modules/workspaces
+vendor/
+go.work
+go.work.sum
+
+# IDEs
+.idea/
+.vscode/
+*.iml
+
+# OS junk
+.DS_Store
+Thumbs.db
+
+# Logs & runtime files
+*.log
+logs/
+*.jsonl
+
+# Env & secrets
+.env
+.env.*
+!.env.example
+
+# Telegram sessions & cache
+tg.session
+*.session
+session/
+session/**
+
+# Local databases (pebble/bolt/sqlite, etc.)
+*.db
+*.pebble.db
+*.bolt.db
+
+# Caches & temp
+.cache/
+*.swp
+*.swo
+
+# Coverage
+coverage/
+*.cov
+coverage.out
