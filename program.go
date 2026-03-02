@@ -3,10 +3,12 @@ package main
 import (
 	"context"
 	"fmt"
+	"gobot1/app"
+	"gobot1/handlers"
+	"gobot1/router"
 	"gobot1/util"
 	"os"
 	"os/signal"
-	"strconv"
 	"sync"
 	"syscall"
 	"time"
@@ -21,15 +23,16 @@ import (
 )
 
 type program struct {
-	ctx       context.Context
-	cancel    context.CancelFunc
-	wg        sync.WaitGroup
-	config    *Config
-	botClient *telegram.Client
-
+	ctx        context.Context
+	cancel     context.CancelFunc
+	wg         sync.WaitGroup
+	config     *Config
+	botClient  *telegram.Client
+	handler    *handlers.Handler
 	dispatcher tg.UpdateDispatcher
 	flow       auth.Flow
 	db         *gorm.DB
+	router     router.EventRouter
 }
 
 type TerminalWithPassword struct {
@@ -51,27 +54,6 @@ func (p *program) Initialize(args []string) error {
 	p.ctx, p.cancel = signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 
 	p.dispatcher = tg.NewUpdateDispatcher()
-	p.dispatcher.OnNewMessage(func(ctx context.Context, e tg.Entities, u *tg.UpdateNewMessage) error {
-
-		msg, ok := u.Message.(*tg.Message)
-		if !ok || msg.Out {
-			return nil
-		}
-		if _, ok := msg.PeerID.(*tg.PeerUser); !ok {
-			return nil
-		}
-
-		var fromID int64
-		if pu, ok := msg.FromID.(*tg.PeerUser); ok {
-			fromID = pu.UserID
-		} else if pu, ok := msg.PeerID.(*tg.PeerUser); ok {
-			fromID = pu.UserID
-		}
-
-		fmt.Printf("DM от %d: %s\n", fromID, msg.Message)
-		return nil
-	})
-
 	p.botClient = telegram.NewClient(p.config.APIID, p.config.APIHash, telegram.Options{
 		SessionStorage: &session.FileStorage{Path: "tg.session"},
 		UpdateHandler:  p.dispatcher,
@@ -94,6 +76,15 @@ func (p *program) Initialize(args []string) error {
 	}
 
 	p.db = db
+	application := app.New(p.db, p.botClient)
+
+	p.router = application.BuildRouter()
+
+	fmt.Printf("%T\n", p.router)
+
+	p.handler = &handlers.Handler{Client: p.botClient, DB: p.db, Router: p.router}
+	p.registerHandlers()
+
 	return nil
 }
 
@@ -116,12 +107,12 @@ func (p *program) Run() error {
 
 			util.Whoami(ctx, p.botClient)
 
-			metakChannel, _ := strconv.ParseInt(os.Getenv("METAK"), 10, 64)
-			p.startAdminLogPoller(metakChannel, time.Hour)
-			err := p.pollAdminLogOnce(ctx, metakChannel)
-			if err != nil {
-				return err
-			}
+			//metakChannel, _ := strconv.ParseInt(os.Getenv("METAK"), 10, 64)
+			//p.startAdminLogPoller(metakChannel, time.Hour)
+			//err := p.pollAdminLogOnce(ctx, metakChannel)
+			//if err != nil {
+			//	return err
+			//}
 
 			<-ctx.Done()
 			return ctx.Err()
@@ -201,4 +192,8 @@ func (p *program) startAdminLogPoller(channelID int64, interval time.Duration) {
 			}
 		}
 	}()
+}
+
+func (p *program) registerHandlers() {
+	p.dispatcher.OnNewMessage(p.handler.HandleNewMessage)
 }
