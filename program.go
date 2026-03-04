@@ -76,7 +76,7 @@ func (p *program) Initialize(args []string) error {
 	}
 
 	p.db = db
-	application := app.New(p.db, p.botClient)
+	application := app.New(p.ctx, p.db, p.botClient)
 
 	p.router = application.BuildRouter()
 
